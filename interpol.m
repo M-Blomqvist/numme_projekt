@@ -22,13 +22,13 @@ for U_0 = [220,1500,2300]
         
         %find  points to interpolate between
         results = runge_kutta(U_0,start, steps, stop);
-        xx = [0:h/100:stop];
+        xx = [0:h/10:stop];
         cx = spline([start:h:stop],results(1,:));
         yy = ppval(cx,xx);
         %Hitta max val
         [y,x] = max(yy);
         maxs(:,mi) = [xx(x),y];
-        mi = mi +1;
+        
         plot(xx,yy,'-',xx(x),y, 'o');
         hold on;
         
@@ -42,8 +42,19 @@ for U_0 = [220,1500,2300]
             end
             prev_val = [xx(i),yy(i)];
         end
+        
+        % ta diffen mellan "roots", vilket ger T/2
+        diffs = zeros(1, size(root_data, 2)-1);
+        for i = [2:size(root_data,2)]
+            diffs(i) = abs(root_data(5, i)-root_data(5, i-1));
+        end
+        periods(mi) = mean(diffs)*2;
+        
+        mi = mi +1;
     end
 end
+
+
 
 % Topvärden: 220 => 0.18755, 1500 => 1.9971, 2300 => 6.5386
 hold off;
