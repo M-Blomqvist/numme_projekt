@@ -19,3 +19,4 @@ results = runge_kutta(2300,0,1000,4*period);
 
 plot([0:4*period/1000:4*period], results(1,:), '-g');
 
+hold off;
