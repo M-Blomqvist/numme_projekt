@@ -10,14 +10,14 @@ I_0 = 1;
 period = 2*pi*sqrt(C*L_0);
 
 start = 0;
-steps = 1000;
+num_steps = [1000, 2000, 4000, 8000, 16000, 32000, 64000];
 stop = 4*period;
 
-maxs = zeros(2, 6);
-periods = zeros(1, 6);
+maxs = zeros(2, 3*size(num_steps, 2));
+periods = zeros(1, 3*size(num_steps, 2));
 mi = 1;
 for U_0 = [220,1500,2300]
-    for steps = [10000,20000]
+    for steps = num_steps
         h = (stop -start)/steps;
         
         %find  points to interpolate between
@@ -53,8 +53,42 @@ for U_0 = [220,1500,2300]
         mi = mi +1;
     end
 end
-
-
-
+% beräkna diffen för de olika steglängderna
+errors = zeros(2, size(periods, 2) - 1);
+hs = (stop)*num_steps.^-1;
+for i = [1:size(errors,2)]
+    errors(1,i) = abs(periods(i+1) - periods(i));
+    errors(2,i) = abs(maxs(i+1) - maxs(i));
+end
+hold off;
+pause;
+loglog(hs(2:end), errors(1, :));
+hold on;
+loglog(hs(2:end), errors(2, :));
 % Topvärden: 220 => 0.18755, 1500 => 1.9971, 2300 => 6.5386
 hold off;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
