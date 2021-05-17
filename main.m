@@ -44,9 +44,6 @@ for stop = periods
     hold off;
 end
 
-%Använd interpolation för att finna I max & perioden T
-interpol_steps_per_step = 100;
-
 for stop = periods(2)
    [hs, inter_period, period_errs,inter_max,  max_errs] = interpol_errors(U_0s, start, hs, stop);
 end
@@ -54,40 +51,46 @@ end
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
-    plot(hs,period_errs(u_i,:),'DisplayName', txt);
+    loglog(hs,period_errs(u_i,:),'DisplayName', txt);
+    hold on;
+    loglog(hs,hs.^2);
     title('Felvärden interpolation: perioder');
     u_i = u_i +1;
-    hold on;
 end
 pause
 hold off;
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
-    plot(hs,max_errs(u_i,:),'DisplayName',txt);
+    loglog(hs,max_errs(u_i,:),'DisplayName',txt);
+    hold on;
+    loglog(hs,hs.^2);
     title('Felvärden interpolation: max värden');
     u_i = u_i +1;
-    hold on;
 end
 pause
-hold off;
 %%
+hold off;
 %Best candidate: 40000 steps = no period errors, max_errors <10^-11
 %Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 best candidate
-% wanted_period = 400^-1;
-% stop = periods(2);
-% h = hs(4);
-% guess = 220;
-% U_h = 1e-9;
-% diff = 100;
-% while diff > 1e-10 
-%     fprintf('\n guesses = %d, h %d, diff = %d\n', guess,U_h,diff);
-%     [~,~,~,y_max,i_period] = interpol(guess, start, h, stop,interpol_steps_per_step);
-%     guess_h = guess +U_h;
-%     [~,~,~,~,i_period_h] = interpol(guess_h, start, h, stop, interpol_steps_per_step);
-%     fprintf('\n i_period = %d, i_period_h = %d\n', i_period,i_period_h);
-%     guess = guess-U_h*(i_period/(i_period_h-i_period));
-%     diff = abs(i_period - wanted_period);
-% end
-% U_star = guess;
-% max_star = y_max;
+wanted_period = 400^-1;
+stop = periods(2);
+guess1 = 220;
+guess2 = 1500;
+certainty = 1e-14;
+diff = 100;
+U_stars = zeros(1,size(hs,2));
+for i = [1:size(hs,2)]
+    diff = 100;
+    fprintf('\n Sekant: guesses = %d & %d \n', guess1,guess2);
+    while diff > certainty
+        y1 = f(guess1);
+        y2 = f(guess2);
+        guess = guess1-(y1*(guess1-guess2))/(y1-y2);
+        guess1 = guess2;
+        guess2 = guess;
+        diff = abs(guess1-guess2);
+        %fprintf('\n guesses = %d & %d, diff: %d \n', guess1,guess2, diff);
+    end
+    root = guess1;
+end

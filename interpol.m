@@ -25,25 +25,27 @@ function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop)
         prev_val = [x,y];
     end
     
-    ii = 1;
+    
     for i = [1:size(results(2,:),2)]
         x = xx(i);
         y_prime = results(2,i);
-        if y ~= 0 && prev_val(2) ~= 0
-            if prev_val(2) * y_prime <= 0
-                f = @(x) ppval(cy_prime,x);
-                root = sekant(f,prev_val(2),x,1e-11);
-                maxs(:,ii) = [root, ppval(cy,root)];
-                ii = ii +1;
+        if y_prime == 0 
+           max_x = x;
+           max_y = results(1,i);
+           if max_y > 0
+               break;
+           end
+        elseif prev_val(2) * y_prime < 0
+            f = @(x) ppval(cy_prime,x);
+            root = sekant(f,prev_val(1),x,1e-15);
+            max_x = root;
+            max_y = ppval(cy,root);
+            if max_y > 0
+               break;
             end
-        elseif y == 0
-           maxs(:,ii) = [x,y];
-           ii = ii +1;
-        end    
+        end   
         prev_val = [x,y_prime];
     end
-    [max_y,max_i] = max(maxs(2,:));
-    max_x = maxs(1,max_i);
     
     % ta diffen mellan "roots", vilket ger T/2
     diffs = zeros(1, size(roots, 2)-1);
