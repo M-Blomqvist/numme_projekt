@@ -1,4 +1,4 @@
-function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop)
+function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop,certainty)
     %find  points to interpolate between
     xx = [start:h:stop];
     results = runge_kutta(U_0,start, h, stop);
@@ -15,7 +15,7 @@ function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop)
         if y ~= 0 && prev_val(2) ~= 0
             if prev_val(2) * y < 0
                 f = @(x) ppval(cy,x);
-                roots(ii) = sekant(f,prev_val(1),x,1e-11);
+                roots(ii) = sekant(f,prev_val(1),x,certainty);
                 ii = ii +1;
             end
         elseif y == 0
@@ -37,7 +37,7 @@ function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop)
            end
         elseif prev_val(2) * y_prime < 0
             f = @(x) ppval(cy_prime,x);
-            root = sekant(f,prev_val(1),x,1e-15);
+            root = sekant(f,prev_val(1),x,certainty);
             max_x = root;
             max_y = ppval(cy,root);
             if max_y > 0

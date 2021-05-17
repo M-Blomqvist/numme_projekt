@@ -1,4 +1,4 @@
-function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors(U_0s, start, hs,stop)
+function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors(U_0s, start, hs,stop, certainty)
     inter_periods = zeros(size(U_0s,2),size(hs,2));
     inter_maxs = zeros(size(U_0s,2),size(hs,2));
     
@@ -6,7 +6,7 @@ function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors
     for U_0 = U_0s
         s_i = 1;
         for h = hs
-          [cx,x_max,y_max,i_period] = interpol(U_0, start, h, stop);
+          [cx,x_max,y_max,i_period] = interpol(U_0, start, h, stop,certainty);
           txt = ['I(t) med interpolerade maxvärden, period = ', num2str(i_period)];
           inter_periods(u_i, s_i) = i_period;
           inter_maxs(u_i,s_i) = y_max;
