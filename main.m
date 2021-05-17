@@ -121,32 +121,49 @@ for i = 2:size(U_stars,2)
    diffs(i-1) = abs(U_stars(i)-U_stars(i-1)); 
 end
 
-%%
-%Utvidgning: v(t)
+%%   Utvidgning: v(t)
 h = hs(3);
 u_i = 1;
+
+% Plotta den omformade v(t) för de tre U_0
 for u = U_0s
     [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
-    vs(i) = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
-    xx = [0:h*2*pi:2*pi];
+    vs{u_i} = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    xx = [0:h*2*pi/period:2*pi];
     txt = ['V(t) med U_0 = ', num2str(u)];
-    vv = vs(i);
+    vv = vs{u_i};
     plot(xx,vv(xx),'DisplayName',txt);
     hold on;
     u_i = u_i + 1;
 end
-
-wanted_coefs = [3,10];
+hold off;
+% Beräkna och plotta fourierutvecklingen av v(t) för de tre U_0
+wanted_coefs = [3,10]; 
 for u = 1:size(U_0s,2)
-    v = vs(u);
-    a = @(k,xs) v(xs)*sin(k*xs);
-    for coef = wanted_coefs
-        for k = 1:wanted_coef
-            a_k = (1/pi)*trapz(a(k,xx),xx);
-        end    
-    end
+    v = vs{u};
+    a = @(k,xs) v(xs).*sin(k.*xs);
+    for coefs = wanted_coefs
+        for k = 1:coefs
+            as(u,k) = (1/pi)*trapz(xx, a(k,xx)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
+        end       
+    end 
+    % definera fourierutvecklingarna med beräknade koefficienter
+    fourier_funcs{u,1} = @(t) as(u,1)*sin(t) + as(u,2)*sin(2*t) + as(u,3)*sin(3*t);
+    fourier_funcs{u,2} = @(t) as(u,1)*sin(t) + as(u,2)*sin(2*t) + as(u,3)*sin(3*t) + as(u,4)*sin(4*t) + as(u,5)*sin(5*t) + as(u,6)*sin(6*t) + as(u,7)*sin(7*t) + as(u,8)*sin(8*t) + as(u,9)*sin(9*t) + as(u,10)*sin(10*t);
+    
+    plot(xx, fourier_funcs{u,1}(xx),xx,fourier_funcs{u,2}(xx),xx, vs{u}(xx));
+    legend({'Fourierutveckling med 3 termer','Fourierutveckling med 10 termer',['v(t) för U_0 = ',num2str(U_0s(u))]},'Location','southwest')
+    pause
 end
 
+% Plotta de udda a-värderna för alla U_0
+for u = 1:size(U_0s,2)
+    semilogy(as(u,1:2:end)); 
+    title(['semilogy-plot för udda a_k, U_0 = ',num2str(U_0s(u))])
+    pause
+end
+
+%% Function declaration for U_0* calculations
 function period = f_period(u,start,h,stop,certainty,wanted_period)
     [~,~,~,p] = interpol(u, start, h, stop,certainty);
     period = p - wanted_period;
