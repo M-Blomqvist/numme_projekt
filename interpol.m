@@ -16,10 +16,12 @@ function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop,certainty)
             if prev_val(2) * y < 0
                 f = @(x) ppval(cy,x);
                 roots(ii) = sekant(f,prev_val(1),x,certainty);
+                %fprintf('\n ha  %d , %d \n', roots(ii),f(roots(ii)));
                 ii = ii +1;
             end
         elseif y == 0
            roots(ii) = x;
+           %fprintf('\n ha  %d , %d \n', x,y);
            ii = ii +1;
         end    
         prev_val = [x,y];
@@ -47,10 +49,5 @@ function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop,certainty)
         prev_val = [x,y_prime];
     end
     
-    % ta diffen mellan "roots", vilket ger T/2
-    diffs = zeros(1, size(roots, 2)-1);
-    for i = [2:size(roots,2)]
-        diffs(i) = abs(roots(i)-roots(i-1));
-    end
-    period_i = mean(diffs)*2;
+    period_i = abs(roots(3)-roots(1));
 end

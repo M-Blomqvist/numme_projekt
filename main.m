@@ -127,40 +127,81 @@ u_i = 1;
 
 % Plotta den omformade v(t) för de tre U_0
 for u = U_0s
-    [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
-    vs{u_i} = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    for h_i = 1:size(hs,2)
+        h = hs(h_i);
+        [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
+        vs{u_i,h_i} = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    end
     xx = [0:h*2*pi/period:2*pi];
     txt = ['V(t) med U_0 = ', num2str(u)];
-    vv = vs{u_i};
+    vv = vs{u_i,h_i};
     plot(xx,vv(xx),'DisplayName',txt);
     hold on;
     u_i = u_i + 1;
 end
+pause
 hold off;
 % Beräkna och plotta fourierutvecklingen av v(t) för de tre U_0
-wanted_coefs = [3,10]; 
+coefs =10; 
 for u = 1:size(U_0s,2)
-    v = vs{u};
-    a = @(k,xs) v(xs).*sin(k.*xs);
-    for coefs = wanted_coefs
+    for h_i = 1:size(hs,2)
+        v = vs{u,h_i};
+        h = hs(h_i);
+        a = @(k,xs) v(xs).*sin(k.*xs);
+        xx = [0:h*2*pi/period:2*pi];
         for k = 1:coefs
-            as(u,k) = (1/pi)*trapz(xx, a(k,xx)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
-        end       
-    end 
+            as(u,h_i,k) = (1/pi)*trapz(xx, a(k,xx)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
+        end
+    end
+end
+
+for u = 1:size(U_0s,2)
+    for h_i = 2:size(hs,2)
+        for k = 1:coefs
+            diff_a(h_i-1,k) = abs(as(u,h_i,k) - as(u,h_i-1,k));
+        end
+    end
+    for k = 1:coefs
+        plot(hs(2:end), diff_a(:,k));
+        hold on;
+    end
+    pause
+    hold off;
+end
+
+%choose h to continue with
+h_i = 3;
+for u = 1:size(U_0s,2)
     % definera fourierutvecklingarna med beräknade koefficienter
-    fourier_funcs{u,1} = @(t) as(u,1)*sin(t) + as(u,2)*sin(2*t) + as(u,3)*sin(3*t);
-    fourier_funcs{u,2} = @(t) as(u,1)*sin(t) + as(u,2)*sin(2*t) + as(u,3)*sin(3*t) + as(u,4)*sin(4*t) + as(u,5)*sin(5*t) + as(u,6)*sin(6*t) + as(u,7)*sin(7*t) + as(u,8)*sin(8*t) + as(u,9)*sin(9*t) + as(u,10)*sin(10*t);
+    fourier_funcs{u,1} = @(t) as(u,h_i,1)*sin(t) + as(u,h_i,2)*sin(2*t) + as(u,h_i,3)*sin(3*t);
+    fourier_funcs{u,2} = @(t) as(u,h_i,1)*sin(t) + as(u,h_i,2)*sin(2*t) + as(u,h_i,3)*sin(3*t) + as(u,h_i,4)*sin(4*t) + as(u,h_i,5)*sin(5*t) + as(u,h_i,6)*sin(6*t) + as(u,h_i,7)*sin(7*t) + as(u,h_i,8)*sin(8*t) + as(u,h_i,9)*sin(9*t) + as(u,h_i,10)*sin(10*t);
     
-    plot(xx, fourier_funcs{u,1}(xx),xx,fourier_funcs{u,2}(xx),xx, vs{u}(xx));
+    plot(xx, fourier_funcs{u,1}(xx),xx,fourier_funcs{u,2}(xx),xx, vs{u,h_i}(xx));
     legend({'Fourierutveckling med 3 termer','Fourierutveckling med 10 termer',['v(t) för U_0 = ',num2str(U_0s(u))]},'Location','southwest')
     pause
 end
-
 % Plotta de udda a-värderna för alla U_0
 for u = 1:size(U_0s,2)
-    semilogy(as(u,1:2:end)); 
+    semilogy(abs(squeeze(as(u,h_i,1:2:end)))); 
     title(['semilogy-plot för udda a_k, U_0 = ',num2str(U_0s(u))])
     pause
+end
+
+%% sound-part
+    h = 0.00001;
+for u_i = 1:size(U_0s,2)
+    u = U_0s(u_i);
+    [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
+    v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    xx = [0:h*2*pi/period:2*pi];
+    plot(xx, v(xx));
+    for i = 0:1:399
+        y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx);
+    end
+    Fs = 400*size(xx,2);
+    %sound(y,Fs);
+    audiowrite(['audio_',num2str(u),'.ogg'],y,Fs);
+    pause;
 end
 
 %% Function declaration for U_0* calculations
