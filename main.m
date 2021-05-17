@@ -116,6 +116,37 @@ for u_i = 2:size(U_stars,2)
    period_errs(u_i) = abs(inter_periods(u_i) - inter_periods(u_i-1));
 end  
 
+%%
+for i = 2:size(U_stars,2)
+   diffs(i-1) = abs(U_stars(i)-U_stars(i-1)); 
+end
+
+%%
+%Utvidgning: v(t)
+h = hs(3);
+u_i = 1;
+for u = U_0s
+    [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
+    vs(i) = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    xx = [0:h*2*pi:2*pi];
+    txt = ['V(t) med U_0 = ', num2str(u)];
+    vv = vs(i);
+    plot(xx,vv(xx),'DisplayName',txt);
+    hold on;
+    u_i = u_i + 1;
+end
+
+wanted_coefs = [3,10];
+for u = 1:size(U_0s,2)
+    v = vs(u);
+    a = @(k,xs) v(xs)*sin(k*xs);
+    for coef = wanted_coefs
+        for k = 1:wanted_coef
+            a_k = (1/pi)*trapz(a(k,xx),xx);
+        end    
+    end
+end
+
 function period = f_period(u,start,h,stop,certainty,wanted_period)
     [~,~,~,p] = interpol(u, start, h, stop,certainty);
     period = p - wanted_period;
