@@ -13,8 +13,8 @@ function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors
           xx = [start:h:stop];
           plot(xx, ppval(cx,xx),'DisplayName',txt);
           hold on;
-          %plot(x_max,y_max, 'o', 'DisplayName',['max värde för ovan']);
-          plot([start:i_period:stop],ppval(cx,[start:i_period:stop]), 'o', 'DisplayName',['period för ovan']);
+          plot(x_max,y_max, 'o', 'DisplayName',['max värde för ovan']);
+          plot([start:i_period:stop],ppval(cx,[start:i_period:stop]), '*', 'DisplayName',['period för ovan']);
           s_i = s_i + 1;
         end
         u_i = u_i + 1;

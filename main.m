@@ -85,7 +85,7 @@ for i = [1:size(hs,2)]
     h = hs(i);
     f = @(u) f_period(u,start,h,stop,certainty, wanted_period);
     U_stars(i) = sekant(f, guess1,guess2,certainty);
-    fprintf('%d', U_stars(i));
+    fprintf('\n finding U* = %d for h = %d \n', U_stars(i),h);
 end
 %use most accurrate h
 h = hs(end);
@@ -95,7 +95,7 @@ inter_maxs = zeros(1,size(U_stars,2));
 u_i = 1;
 for u = U_stars
     [cx,max_x,max_y,period] = interpol(u,start,h, stop, certainty);
-    fprintf('\n %d \n', period);
+    fprintf('\n Period = %d for U* = %d \n', period, u);
     inter_periods(u_i) = period;
     inter_maxs(u_i) = max_y;
     txt = ['I(t) med interpolerade maxvärden, period = ', num2str(period)];
@@ -162,9 +162,10 @@ for u = 1:size(U_0s,2)
         end
     end
     for k = 1:coefs
-        plot(hs(2:end), diff_a(:,k));
+        plot(hs(2:end), diff_a(:,k),'DisplayName',['diff: a_', num2str(k)]);
         hold on;
     end
+    title(['felvärden/noggranhet a_k för U_0 = ', num2str(U_0s(u))]);
     pause
     hold off;
 end
@@ -194,15 +195,18 @@ for u_i = 1:size(U_0s,2)
     [cx,~,y_max,period] = interpol(u,start,h,stop,certainty);
     v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
     xx = [0:h*2*pi/period:2*pi];
-    plot(xx, v(xx));
+    y = zeros(1,size(xx,2)*400);
     for i = 0:1:399
         y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx);
     end
+    plot(y);
     Fs = 400*size(xx,2);
     %sound(y,Fs);
     audiowrite(['audio_',num2str(u),'.ogg'],y,Fs);
     pause;
 end
+
+%% Mystery sound part
 
 %% Function declaration for U_0* calculations
 function period = f_period(u,start,h,stop,certainty,wanted_period)
