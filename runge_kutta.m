@@ -1,4 +1,4 @@
-function results = runge_kutta(U_0,start,steps,stop)
+function results = runge_kutta(U_0,start,h,stop)
     % konstanter
     C = 5e-7;
     L_0 = 0.7;
@@ -20,7 +20,6 @@ function results = runge_kutta(U_0,start,steps,stop)
     I = 0;
     d_I = U_0/L_0;
     y = [I;d_I];
-    h = (stop-start)/steps;
     
     ts = [start:h:stop];
     results = zeros(2, size(ts, 2));
