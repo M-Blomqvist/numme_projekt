@@ -57,10 +57,10 @@ for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
     loglog(hs,period_errs(u_i,:),'DisplayName', txt);
     hold on;
-    loglog(hs,hs.^2);
     title('Felvärden interpolation: perioder');
     u_i = u_i +1;
 end
+loglog(hs,hs.^2,'DisplayName', 'O(h^2)');
 pause
 hold off;
 u_i = 1;
@@ -68,10 +68,10 @@ for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
     loglog(hs,max_errs(u_i,:),'DisplayName',txt);
     hold on;
-    loglog(hs,hs.^2);
     title('Felvärden interpolation: max värden');
     u_i = u_i +1;
 end
+loglog(hs,hs.^2,'DisplayName', 'O(h^2)');
 pause
 %%
 hold off;
@@ -106,6 +106,8 @@ for u = U_stars
     plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan']);
     i = i +1;
 end
+title('plot I(t) med period 400 och U*');
+legend('Location','southeast');
 hold off;
 pause;
 
@@ -130,7 +132,6 @@ certainty = 1e-12;
 h = hs(end);
 % for every const combiniation
 for c_i = 1:4
-    % TODO: beräkna U_0_star och I_max
     C_ = consts(1,c_i);
     L_ = consts(2,c_i);
     fprintf('Finding U* with c = %d & L_0 = %d \n', C_,L_);
@@ -164,6 +165,7 @@ for u = U_0s
     txt = ['V(t) med U_0 = ', num2str(u)];
     vv = vs{u_i,h_i};
     plot(xx,vv(xx),'DisplayName',txt);
+    legend('Location','southwest')
     hold on;
     u_i = u_i + 1;
 end
@@ -190,15 +192,16 @@ for u = 1:size(U_0s,2)
         end
     end
     for k = 1:coefs
-        plot(hs(2:end), diff_a(:,k),'DisplayName',['diff: a_', num2str(k)]);
+        plot(hs(2:end), diff_a(:,k),'DisplayName',['diff: a', num2str(k)]);
         hold on;
     end
     title(['felvärden/noggranhet a_k för U_0 = ', num2str(U_0s(u))]);
+    legend('Location','northeast')
     pause
     hold off;
 end
 
-%choose h to continue with
+%choose h to continue with 3
 h_i = 3;
 for u = 1:size(U_0s,2)
     % definera fourierutvecklingarna med beräknade koefficienter
@@ -228,6 +231,7 @@ for u_i = 1:size(U_0s,2)
         y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx);
     end
     plot(y);
+    title(['soundplot for U_0 =' num2str(u)]);
     Fs = 400*size(xx,2);
     %sound(y,Fs);
     audiowrite(['audio_',num2str(u),'.ogg'],y,Fs);
@@ -268,8 +272,9 @@ end
 fprintf('\n Diff a3/a1 = %d \n', diff_kvot(:));
 pause
 
+h_i = size(hs,2);
 for u_i = 1:size(U_0s,2)
-   kvot(u_i) = as(u_i,end,3)/as(u_i,end,1);
+   kvot(u_i) = as(u_i,h_i,3)/as(u_i,h_i,1);
 end
 kvot(size(U_0s,2)+1) = mys_kvot(end);
 for i = 1:size(U_0s,2)
@@ -288,21 +293,40 @@ mystery_fourier{2} = @(t) mys_as(step_i,1)*sin(t) + mys_as(step_i,2)*sin(2*t) + 
 plot(xx, v,xx, mystery_fourier{1}(xx),xx,mystery_fourier{2}(xx));
 legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 10 termer'},'Location','southwest')
 pause
+hold on;
+
+% Bestäm U_0 för mysterysound
+%h = hs(3);
+used_hs= hs;
+
+i = 1;
+for h = used_hs
+    U_0_2 = 1500;
+    U_0_1 = 2300;
+    coefs = 10;
+    % definiera funktionen med interpolation
+    error = @(U_0) kvot(end)-interpol_eval(U_0, 0, h, stop, certainty, C, L_0, size(v,2)-1,coefs);
+    U_0_mys(i) = sekant(error, U_0_1, U_0_2, certainty);
+    [cx,~,y_max,period] = interpol(U_0_mys(i),start,h,stop,certainty,C,L_0);
+    xx = [0:h*2*pi/period:2*pi];
+    plot(xx,ppval(cx,xx*period/(2*pi))/y_max,'DisplayName',['mystery sound approximation plot med U_0 = ', num2str(U_0_mys(i)), ' h = ',num2str(h)]);
+    i = i+1;
+end
+
+for i = 2:size(used_hs,2)
+   diff_U_mys(i-1) = abs(U_0_mys(i)-U_0_mys(i-1));
+   fprintf(['\n diff in U for mystery sound: ', num2str(diff_U_mys(i-1)), ' for h =', num2str(used_hs(i))]);
+end
 hold off;
-
-%% Bestäm U_0 för mysterysound
-h = hs(3);
-U_0_2 = 2000;
-U_0_1 = 2300;
-% definiera funktionen med interpolation
-error = @(U_0) norm(mys_as-interpol_eval(U_0, 0, h, stop, certainty, C, L_0, size(v,2)-1));
-U_0_mys = sekant(error, U_0_1, U_0_2, certainty*10);
-
 %% Function declaration for U_0 mysterysound
-function ys = interpol_eval(U_0,start, h,stop,certainty, C, L_0,steps)
+function kvot = interpol_eval(U_0,start, h,stop,certainty, C, L_0,steps,coefs)
     fprintf('Guess: %d\n', U_0);
     [cx,~,y_max,period] = interpol(U_0,start,h,stop,certainty, C, L_0);
     v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
-    xx = [0:2*pi/steps:2*pi];
-    ys = v(xx);
+    xx = [0:h*2*pi/period:2*pi];
+    a = @(k,xs) v(xs).*sin(k.*xs);
+    for k = 1:coefs
+        as(k) = (1/pi)*trapz(xx, a(k,xx)); 
+    end
+    kvot = as(3)/as(1);
 end
