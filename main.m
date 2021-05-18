@@ -141,7 +141,7 @@ for u = U_stars
     plot(x, ppval(star_plots{i},x),'DisplayName',txt);
     hold on;
     plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan ', num2str(star_maxs(2,i))]);
-    plot([start:star_periods(i):stop],ppval(star_plots{i},[start:star_periods(i):stop]), '*', 'DisplayName',['period för ovan ',num2str(i_period)]);
+    plot([start:star_periods(i):stop],ppval(star_plots{i},[start:star_periods(i):stop]), '*', 'DisplayName',['period för ovan ',num2str(star_periods(i) )]);
     i = i +1;
 end
 title('plot I(t) med period 400 och U*');
