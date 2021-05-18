@@ -10,8 +10,9 @@ pause
 % konstanter
 C = 5e-7;
 L_0 = 0.7;
-hs = [1e-6,5e-7,25e-8,125e-9, 625e-10]; 
-start = 0;
+hs = [1e-6,5e-7,25e-8,125e-9, 625e-10]*50; 
+certainty = 1e-11;
+start = 0; 
 periods = [period,1.5*period, 2*period];
 U_0s = [220,1500, 2300];
 for stop = periods
@@ -49,7 +50,7 @@ for stop = periods
     end
 end
 %% Interpolate to find max_i and period
-certainty = 1e-14;
+
 fprintf('Sekant certainty (break when diff less than) %d \n', certainty);
 for stop = periods(2)
    [e_hs, inter_period, period_errs,inter_max,  max_errs,cxs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
@@ -107,8 +108,10 @@ ylabel('{max(I)}_h - {max(I)}_{2h}');
 legend('Location','southeast');
 hold off;
 for i = 1:size(U_0s,2)
-    U_0 = U_0s(i);
-    fprintf(['For U_0 = ',num2str(U_0),'\n T = ', num2str(inter_period(i,end)), ' err = ', num2str(period_errs(i,end)),'\n max(I) = ',num2str(inter_max(i,end)), ' err = ', num2str(max_errs(i,end)),' \n']);
+    for h_i = 1:size(hs,2) 
+        U_0 = U_0s(i);
+        fprintf(['For U_0 = ',num2str(U_0),'\n T = ', num2str(inter_period(i,end)), ' err = ', num2str(period_errs(i,end)),'\n max(I) = ',num2str(inter_max(i,end)), ' err = ', num2str(max_errs(i,end)),' \n']);
+    end
 end   
 %%
 pause
@@ -117,7 +120,7 @@ wanted_period = 400^-1;
 stop = periods(2);
 guess1 = 220;
 guess2 = 1500;
-certainty = 1e-14;
+
 diff = 100;
 U_stars = zeros(1,size(hs,2));
 star_periods = zeros(1,size(U_stars,2));
@@ -165,7 +168,7 @@ consts = [Cs(1), Cs(2), Cs(1), Cs(2);
           Ls(1), Ls(1), Ls(2), Ls(2)];     
 U_0_stars = zeros(1,4);
 I_maxs = zeros(1,4);
-certainty = 1e-12;
+
 %Use most correct h;
 h = hs(end);
 % for every const combiniation
