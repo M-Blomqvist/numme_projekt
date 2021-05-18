@@ -1,16 +1,14 @@
-function [U_star,max_star]= find_period(wanted_period,guess1,guess2, start, h,stop, interpol_steps_per_step)
-    diff = 100;
-    while diff > 1e-10 
-        fprintf('\n guesses = %d & %d, diff = %d\n', guess1,guess2,diff);
-        [~,~,~,y_max,i_period] = interpol(guess1, start, h, stop,interpol_steps_per_step);
-        fprintf('\n interpol %d\n', guess2);
-        [~,~,~,~,i_period_h] = interpol(guess2, start, h, stop, interpol_steps_per_step);
-        fprintf('\n i_period = %d, i_period_h = %d\n', i_period,i_period_h);
-        guess = guess1-(i_period*(guess1-guess2))/(i_period-i_period_h);
-        guess1 = guess2;
-        guess2 = guess;
-        diff = abs(i_period - wanted_period);
-    end
-    U_star = guess;
-    max_star = y_max;
+function [U_star,cx,x_max,y_max,period]= find_period(wanted_period,guess1,guess2, start,h,stop, certainty, C, L_0)
+    f = @(u) f_period(u,start,h,stop,certainty, wanted_period, C, L_0);
+    U_star = sekant(f, guess1,guess2,certainty);
+    fprintf('\n finding U* = %d for h = %d \n', U_star,h);
+    %give piecemeal interpolation of above U
+    [cx,x_max,y_max,period] = interpol(U_star,start,h, stop, certainty, C, L_0);
+    fprintf('\n Period = %d for U* = %d \n', period, U_star);
+end
+
+%% Function declaration for U_0* calculations
+function period = f_period(u,start,h,stop,certainty,wanted_period, C, L_0)
+    [~,~,~,p] = interpol(u, start, h, stop,certainty, C, L_0);
+    period = p - wanted_period;
 end

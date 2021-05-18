@@ -83,57 +83,60 @@ guess2 = 1500;
 certainty = 1e-14;
 diff = 100;
 U_stars = zeros(1,size(hs,2));
-
+star_periods = zeros(1,size(U_stars,2));
+star_maxs = zeros(2,size(U_stars,2));
+%Find U* for different hs;
 for i = [1:size(hs,2)]
     h = hs(i);
-    f = @(u) f_period(u,start,h,stop,certainty, wanted_period, C, L_0);
-    U_stars(i) = sekant(f, guess1,guess2,certainty);
-    fprintf('\n finding U* = %d for h = %d \n', U_stars(i),h);
+    [U_star,cx,x_max,y_max,period] = find_period(wanted_period,guess1,guess2,start,h,stop,certainty,C,L_0);
+    U_stars(i) = U_star;
+    star_periods(i) = period;
+    star_maxs(:,i) = [x_max;y_max];
+    star_plots{i} = cx;
 end
-%use most accurrate h
+
+%use most accurrate h to plot
 h = hs(end);
-
-inter_periods = zeros(1,size(U_stars,2));
-inter_maxs = zeros(1,size(U_stars,2));
-u_i = 1;
+i = 1;
 for u = U_stars
-    [cx,max_x,max_y,period] = interpol(u,start,h, stop, certainty, C, L_0);
-    fprintf('\n Period = %d for U* = %d \n', period, u);
-    inter_periods(u_i) = period;
-    inter_maxs(u_i) = max_y;
-    txt = ['I(t) med interpolerade maxvärden, period = ', num2str(period)];
+    txt = ['I(t),U*= ',num2str(u),' period = ', num2str(star_periods(i))];
     x = [start:h:stop];
-    plot(x, ppval(cx,x),'DisplayName',txt);
+    plot(x, ppval(star_plots{i},x),'DisplayName',txt);
     hold on;
-    plot(max_x,max_y, 'o', 'DisplayName',['max värde för ovan']);
-    u_i = u_i +1;
+    plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan']);
+    i = i +1;
 end
-
-pause;
 hold off;
+pause;
 
-period_errs = zeros(1,size(U_stars,2));
-max_errs = zeros(1,size(U_stars,2));
+period_errs = zeros(1,size(U_stars,2)-1);
+max_errs = zeros(1,size(U_stars,2)-1);
+ustar_errs = zeros(1,size(U_stars,2)-1);
 for u_i = 2:size(U_stars,2)
-   max_errs(u_i) = abs(inter_maxs(u_i) - inter_maxs(u_i-1));
-   period_errs(u_i) = abs(inter_periods(u_i) - inter_periods(u_i-1));
+   max_errs(u_i-1) = abs(star_maxs(2,u_i) - star_maxs(2,u_i-1));
+   period_errs(u_i-1) = abs(star_periods(u_i) - star_periods(u_i-1));
+   ustar_errs(u_i-1) = abs(U_stars(u_i)-U_stars(u_i-1)); 
 end  
-
-for i = 2:size(U_stars,2)
-   diffs(i-1) = abs(U_stars(i)-U_stars(i-1)); 
-end
 
 %% störningsanalys
 Ls = [L_0*0.95,L_0*1.05];
 Cs = [C*0.95,C*1.05];
 consts = [Cs(1), Cs(2), Cs(1), Cs(2);
-          Ls(1), Ls(1), Ls(2), Ls(2)];
-      
+          Ls(1), Ls(1), Ls(2), Ls(2)];     
 U_0_stars = zeros(1,4);
 I_maxs = zeros(1,4);
+certainty = 1e-12;
+%Use most correct h;
+h = hs(end);
 % for every const combiniation
-for c_i = 1:size(consts, 4)
+for c_i = 1:4
     % TODO: beräkna U_0_star och I_max
+    C_ = consts(1,c_i);
+    L_ = consts(2,c_i);
+    fprintf('Finding U* with c = %d & L_0 = %d \n', C_,L_);
+    [U_star,~,~,y_max,~] = find_period(wanted_period,guess1,guess2,start,h,stop,certainty,C_,L_);
+    U_0_stars(c_i) = U_star;
+    I_maxs(c_i) = y_max;
 end
 
 % calc diffs
@@ -145,7 +148,7 @@ h_i = 3; % välj vilket h-värde
 U_0_proc = U_0_diff*100/U_stars(h_i);
 I_max_proc = I_max_diff*100/I_maxs(h_i);
 
-fprintf('En störning i L_0 och C på 5% ger ett fel på\nU_0*: %d% I_max*: %d%\n',U_0_proc,I_max_proc); 
+fprintf('En störning i L_0 och C på 5%% ger ett fel på \n U_0*: %d%% I_max*: %d%% \n',U_0_proc,I_max_proc); 
 %% Utvidgning: v(t)
 h = hs(3);
 u_i = 1;
@@ -265,6 +268,17 @@ end
 fprintf('\n Diff a3/a1 = %d \n', diff_kvot(:));
 pause
 
+for u_i = 1:size(U_0s,2)
+   kvot(u_i) = as(u_i,end,3)/as(u_i,end,1);
+end
+kvot(size(U_0s,2)+1) = mys_kvot(end);
+for i = 1:size(U_0s,2)
+   u = U_0s(i);
+   kv = kvot(i);
+   fprintf('\n a3/a1 = %d for %d', kv,u);
+end
+fprintf('\n a3/a1 = %d for mystery sound', kvot(end));
+
 %ta den mest accurate steglängden (alla punkter)
 step_i = size(step_overs,2);
 % definera fourierutvecklingarna med beräknade koefficienter
@@ -273,11 +287,4 @@ mystery_fourier{2} = @(t) mys_as(step_i,1)*sin(t) + mys_as(step_i,2)*sin(2*t) + 
 
 plot(xx, v,xx, mystery_fourier{1}(xx),xx,mystery_fourier{2}(xx));
 legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 10 termer'},'Location','southwest')
-pause
 hold off;
-
-%% Function declaration for U_0* calculations
-function period = f_period(u,start,h,stop,certainty,wanted_period, C, L_0)
-    [~,~,~,p] = interpol(u, start, h, stop,certainty, C, L_0);
-    period = p - wanted_period;
-end
