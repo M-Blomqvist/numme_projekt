@@ -1,7 +1,7 @@
-function results = runge_kutta(U_0,start,h,stop)
+function results = runge_kutta(U_0,start,h,stop, C, L_0)
     % konstanter
-    C = 5e-7;
-    L_0 = 0.7;
+    %C = 5e-7;
+    %L_0 = 0.7;
     I_0 = 1;
 
     % Vektorvärd funktion y = [i;i']

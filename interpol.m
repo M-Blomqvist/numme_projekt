@@ -1,7 +1,7 @@
-function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop,certainty)
+function [cy,max_x,max_y,period_i] = interpol(U_0, start, h,stop,certainty, C, L_0)
     %find  points to interpolate between
     xx = [start:h:stop];
-    results = runge_kutta(U_0,start, h, stop);
+    results = runge_kutta(U_0,start, h, stop, C, L_0);
     cy = spline([start:h:stop],results(1,:));
     cy_prime = spline([start:h:stop],results(2,:));
 
