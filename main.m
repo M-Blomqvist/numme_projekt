@@ -49,9 +49,29 @@ for stop = periods
     end
 end
 %% Interpolate to find max_i and period
-certainty = 1e-12;
+certainty = 1e-14;
+fprintf('Sekant certainty (break when diff less than) %d \n', certainty);
 for stop = periods(2)
-   [e_hs, inter_period, period_errs,inter_max,  max_errs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
+   [e_hs, inter_period, period_errs,inter_max,  max_errs,cxs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
+   for u_i = 1:size(U_0s,2)
+       %plotta endast de med minsta h
+       i_period = inter_period(u_i,end);
+       xx = [start:hs(end):stop];
+       cx = cxs{u_i,end};
+       x_max = inter_max(u_i,end,1);
+       y_max = inter_max(u_i,end,2);
+       txt = ['I(t) interpolerad U_0 = ',num2str(U_0s(u_i))];
+       plot(xx, ppval(cx,xx),'DisplayName',txt);
+       hold on;
+       plot(x_max,y_max, 'o', 'DisplayName',['max värde för ovan ', num2str(y_max)]);
+       plot([start:i_period:stop],ppval(cx,[start:i_period:stop]), '*', 'DisplayName',['period för ovan ',num2str(i_period)]);
+   end
+   title('Interpolerat I(t) med maxvärden');
+   xlabel('t');
+   ylabel('I');
+   legend('Location','southeast');
+   pause;
+   hold off;
 end
 %plot errors in period
 u_i = 1;
@@ -86,11 +106,12 @@ xlabel('h');
 ylabel('{max(I)}_h - {max(I)}_{2h}');
 legend('Location','southeast');
 hold off;
-for U_0 = 1:size(U_0s,2)
-    
+for i = 1:size(U_0s,2)
+    U_0 = U_0s(i);
+    fprintf(['For U_0 = ',num2str(U_0),'\n T = ', num2str(inter_period(i,end)), ' err = ', num2str(period_errs(i,end)),'\n max(I) = ',num2str(inter_max(i,end)), ' err = ', num2str(max_errs(i,end)),' \n']);
 end   
-pause
 %%
+pause
 %Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
 wanted_period = 400^-1;
 stop = periods(2);
