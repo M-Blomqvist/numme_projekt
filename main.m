@@ -175,7 +175,7 @@ for u = 1:size(U_0s,2)
         a = @(k,xs) v(xs).*sin(k.*xs);
         xx = [0:h*2*pi/period:2*pi];
         for k = 1:coefs
-            as(u,h_i,k) = (1/pi)*trapz(xx, a(k,xx)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
+            as(u,h_i,k) = (1/pi)*trapz(xx, a(k,xx)); 
         end
     end
 end
@@ -276,8 +276,25 @@ legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 1
 pause
 hold off;
 
+%% Bestäm U_0 för mysterysound
+h = hs(3);
+U_0_2 = 2000;
+U_0_1 = 2300;
+% definiera funktionen med interpolation
+error = @(U_0) norm(mys_as-interpol_eval(U_0, 0, h, stop, certainty, C, L_0, size(v,2)-1));
+U_0_mys = sekant(error, U_0_1, U_0_2, certainty*10);
+
 %% Function declaration for U_0* calculations
 function period = f_period(u,start,h,stop,certainty,wanted_period, C, L_0)
     [~,~,~,p] = interpol(u, start, h, stop,certainty, C, L_0);
     period = p - wanted_period;
+end
+
+%% Function declaration for U_0 mysterysound
+function ys = interpol_eval(U_0,start, h,stop,certainty, C, L_0,steps)
+    fprintf('Guess: %d\n', U_0);
+    [cx,~,y_max,period] = interpol(U_0,start,h,stop,certainty, C, L_0);
+    v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
+    xx = [0:2*pi/steps:2*pi];
+    ys = v(xx);
 end
