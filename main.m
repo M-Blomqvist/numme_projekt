@@ -60,7 +60,7 @@ for stop = periods(2)
        cx = cxs{u_i,end};
        x_max = inter_max(u_i,end,1);
        y_max = inter_max(u_i,end,2);
-       txt = ['I(t) interpolerad U_0 = ',num2str(U_0s(u_i))];
+       txt = ['I(t) interpolerad U_0 = ',num2str(U_0s(u_i)), ' h = ', num2str(hs(end))];
        plot(xx, ppval(cx,xx),'DisplayName',txt);
        hold on;
        plot(x_max,y_max, 'o', 'DisplayName',['max värde för ovan ', num2str(y_max)]);
@@ -110,9 +110,9 @@ for i = 1:size(U_0s,2)
     U_0 = U_0s(i);
     fprintf(['For U_0 = ',num2str(U_0),'\n T = ', num2str(inter_period(i,end)), ' err = ', num2str(period_errs(i,end)),'\n max(I) = ',num2str(inter_max(i,end)), ' err = ', num2str(max_errs(i,end)),' \n']);
 end   
-%%
 pause
-%Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
+%% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
+
 wanted_period = 400^-1;
 stop = periods(2);
 guess1 = 220;
@@ -136,11 +136,12 @@ end
 h = hs(end);
 i = 1;
 for u = U_stars
-    txt = ['I(t),U*= ',num2str(u),' period = ', num2str(star_periods(i))];
+    txt = ['I(t),U*= ',num2str(u),' h = ', num2str(hs(i))];
     x = [start:h:stop];
     plot(x, ppval(star_plots{i},x),'DisplayName',txt);
     hold on;
-    plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan']);
+    plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan ', num2str(star_maxs(2,i))]);
+    plot([start:star_periods(i):stop],ppval(star_plots{i},[start:star_periods(i):stop]), '*', 'DisplayName',['period för ovan ',num2str(i_period)]);
     i = i +1;
 end
 title('plot I(t) med period 400 och U*');
@@ -149,6 +150,7 @@ xlabel('t');
 ylabel('I');
 hold off;
 
+%calculate differences (resulting errors = inaccuracy)
 period_errs = zeros(1,size(U_stars,2)-1);
 max_errs = zeros(1,size(U_stars,2)-1);
 ustar_errs = zeros(1,size(U_stars,2)-1);
@@ -156,8 +158,44 @@ for u_i = 2:size(U_stars,2)
    max_errs(u_i-1) = abs(star_maxs(2,u_i) - star_maxs(2,u_i-1));
    period_errs(u_i-1) = abs(star_periods(u_i) - star_periods(u_i-1));
    ustar_errs(u_i-1) = abs(U_stars(u_i)-U_stars(u_i-1)); 
-end  
+end
+%plotta skillnader i U*
+loglog(hs(2:end),ustar_errs,'DisplayName', 'U*');
+hold on;
+loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
+title('Felvärden: U*');
+xlabel('h');
+ylabel('{U*}_h-{U*}_{2h}');
+legend('Location','northwest');
+hold off;
 pause;
+
+%plotta skillnader i perioder (om det inte finns någon skillnad skippa plotten)
+if any(period_errs)
+    loglog(hs(2:end),period_errs,'DisplayName', 'T');
+    hold on;
+    %loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
+    title('Felvärden: Perioder');
+    xlabel('h');
+    ylabel('{T}_h-{T}_{2h}');
+    legend('Location','northwest');
+    hold off;
+    pause;
+else
+    fprintf('nothing to plot! Periods are identical for all found U*s! \n differences are guaranteed below %d \n', certainty);
+end
+
+%plotta skillnader i max(I)
+loglog(hs(2:end),max_errs,'DisplayName', 'max(I)');
+hold on;
+loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
+title('Felvärden: max(I)');
+xlabel('h');
+ylabel('{max(I)}_h-{max(I)}_{2h}');
+legend('Location','northwest');
+hold off;
+pause;
+
 %% störningsanalys
 Ls = [L_0*0.95,L_0*1.05];
 Cs = [C*0.95,C*1.05];
@@ -166,6 +204,7 @@ consts = [Cs(1), Cs(2), Cs(1), Cs(2);
 U_0_stars = zeros(1,4);
 I_maxs = zeros(1,4);
 certainty = 1e-12;
+
 %Use most correct h;
 h = hs(end);
 % for every const combiniation
@@ -189,7 +228,6 @@ I_max_proc = I_max_diff*100/I_maxs(h_i);
 
 fprintf('En störning i L_0 och C på 5%% ger ett fel på \n U_0*: %d%% I_max*: %d%% \n',U_0_proc,I_max_proc); 
 %% Utvidgning: v(t)
-h = hs(3);
 u_i = 1;
 
 % Plotta den omformade v(t) för de tre U_0
@@ -232,19 +270,20 @@ for u = 1:size(U_0s,2)
         end
     end
     for k = 1:coefs
-        plot(hs(2:end), diff_a(:,k),'DisplayName',['diff: a', num2str(k)]);
+        loglog(hs(2:end), diff_a(:,k),'DisplayName',['diff: a', num2str(k)]);
         hold on;
     end
+    loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
     title(['felvärden/noggranhet a_k för U_0 = ', num2str(U_0s(u))]);
-    legend('Location','northeast');
+    legend('Location','southeast');
     xlabel('h');
-    ylabel('error(diff)');
+    ylabel('{a_n}_{ h} - {a_n}_{ 2h}');
     pause
     hold off;
 end
 
 %choose h to continue with 3
-h_i = 3;
+h_i = size(hs,2);
 for u = 1:size(U_0s,2)
     % definera fourierutvecklingarna med beräknade koefficienter
     fourier_funcs{u,1} = @(t) as(u,h_i,1)*sin(t) + as(u,h_i,2)*sin(2*t) + as(u,h_i,3)*sin(3*t);
@@ -269,14 +308,17 @@ end
     h = 0.00001;
 for u_i = 1:size(U_0s,2)
     u = U_0s(u_i);
-    [cx,~,y_max,period] = interpol(u,start,h,stop,certainty, C, L_0);
-    v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
-    xx = [0:h*2*pi/period:2*pi];
+    [cx,~,y_max,i_period] = interpol(u,start,h,stop,certainty, C, L_0);
+    v = @(xs,p) ppval(cx,xs*p/(2*pi))/y_max;
+    xx = [0:h*2*pi/i_period:2*pi];
     y = zeros(1,size(xx,2)*400);
+    xxs = zeros(1,size(xx,2)*400);
     for i = 0:1:399
-        y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx);
+        xxs(i*size(xx,2)+1:(i+1)*size(xx,2)) = xx+(i*2*pi);
+        y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx,i_period);
     end
-    plot(y);
+    plot(xxs,y);
+    hold off;
     title(['soundplot for U_0 =' num2str(u)]);
     Fs = 400*size(xx,2);
     %sound(y,Fs);
