@@ -1,7 +1,7 @@
 function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors(U_0s, start, hs,stop, certainty, C, L_0)
     inter_periods = zeros(size(U_0s,2),size(hs,2));
     inter_maxs = zeros(size(U_0s,2),size(hs,2));
-    
+    e_hs = hs(2:end);
     u_i = 1;
     for U_0 = U_0s
         s_i = 1;
@@ -20,6 +20,8 @@ function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors
         u_i = u_i + 1;
     end
     title('Interpolerat I(t) med maxvärden');
+    xlabel('t');
+    ylabel('I');
     %legend('Location','southwest');
     pause;
     hold off;
@@ -34,5 +36,4 @@ function [e_hs,inter_periods,period_errs,inter_maxs, max_errs] = interpol_errors
         end
         u_i = u_i +1;
     end  
-    e_hs = hs(2:end);
 end

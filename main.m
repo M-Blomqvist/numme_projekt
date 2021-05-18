@@ -15,66 +15,82 @@ start = 0;
 periods = [period,1.5*period, 2*period];
 U_0s = [220,1500, 2300];
 for stop = periods
-   for h = hs
+    %No need to check different hs in this excercise  
+    h = hs(2);
       for U_0 = U_0s
           results = runge_kutta(U_0, start, h, stop, C, L_0);
           txt = ['I(t) med U_0 = ',num2str(U_0), ' & h = ', num2str(h)];
           plot([start:h:stop], results(1,:),'DisplayName',txt);
           hold on;
       end
-   end
       title(['RungeKutta4 I(t)']);
-      %legend('Location','southwest');
+      xlabel('t');
+      ylabel('I');
+      legend('Location','southeast');
       pause;
       hold off;
 end
 
-%Visa att E(t) är konstant:
+%% Visa att E(t) är konstant:
 for stop = periods
-    for U_0 = U_0s
-        for h = hs
-          Es = E_const(U_0, start, h, stop, C, L_0);
-          txt = ['E(t) med h = ',num2str(h)];
-          plot([start:h:stop], Es,'DisplayName',txt);
-          hold on;
+    for h = hs
+        for U_0 = U_0s
+              Es = E_const(U_0, start, h, stop, C, L_0);
+              txt = ['E(t) med U_0 = ',num2str(U_0)];
+              plot([start:h:stop], Es,'DisplayName',txt);
+              hold on;
         end
-        %move it here
+        title(['RungeKutta4 E(t) med h = ', num2str(h)]);
+        xlabel('t');
+        ylabel('E');
+        legend('Location','east');
+        pause;
+        hold off;
     end
-    %Move this up for more accurate yet silly plots
-    title(['RungeKutta4 E(t) med U_0 = ', num2str(U_0)]);
-    %legend('Location','southwest');
-    pause;
-    hold off;
 end
-% Interpolate to find max_i and period
+%% Interpolate to find max_i and period
 certainty = 1e-12;
 for stop = periods(2)
-   [hs, inter_period, period_errs,inter_max,  max_errs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
+   [e_hs, inter_period, period_errs,inter_max,  max_errs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
 end
-
+%plot errors in period
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
-    loglog(hs,period_errs(u_i,:),'DisplayName', txt);
+    loglog(e_hs,period_errs(u_i,:),'DisplayName', txt);
     hold on;
-    title('Felvärden interpolation: perioder');
     u_i = u_i +1;
 end
-loglog(hs,hs.^2,'DisplayName', 'O(h^2)');
-pause
+loglog(e_hs,e_hs.^2,'DisplayName', 'O(h^2)');
+title('Felvärden interpolation: perioder');
+xlabel('h');
+ylabel('T_h-T_{2h}');
+legend('Location','northwest');
 hold off;
+pause
+
+%plot errors in max I
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
-    loglog(hs,max_errs(u_i,:),'DisplayName',txt);
+    loglog(e_hs,max_errs(u_i,:),'DisplayName',txt);
     hold on;
     title('Felvärden interpolation: max värden');
+    xlabel('h');
+    ylabel('{max(I)}_h - {max(I)}_{2h}');
     u_i = u_i +1;
 end
-loglog(hs,hs.^2,'DisplayName', 'O(h^2)');
+loglog(e_hs,e_hs.^2,'DisplayName', 'O(h^2)');
+title('Felvärden interpolation: max värden');
+xlabel('h');
+ylabel('{max(I)}_h - {max(I)}_{2h}');
+legend('Location','southeast');
+hold off;
+for U_0 = 1:size(U_0s,2)
+    
+end   
 pause
 %%
-hold off;
 %Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
 wanted_period = 400^-1;
 stop = periods(2);
@@ -108,8 +124,9 @@ for u = U_stars
 end
 title('plot I(t) med period 400 och U*');
 legend('Location','southeast');
+xlabel('t');
+ylabel('I');
 hold off;
-pause;
 
 period_errs = zeros(1,size(U_stars,2)-1);
 max_errs = zeros(1,size(U_stars,2)-1);
@@ -119,7 +136,7 @@ for u_i = 2:size(U_stars,2)
    period_errs(u_i-1) = abs(star_periods(u_i) - star_periods(u_i-1));
    ustar_errs(u_i-1) = abs(U_stars(u_i)-U_stars(u_i-1)); 
 end  
-
+pause;
 %% störningsanalys
 Ls = [L_0*0.95,L_0*1.05];
 Cs = [C*0.95,C*1.05];
@@ -165,10 +182,12 @@ for u = U_0s
     txt = ['V(t) med U_0 = ', num2str(u)];
     vv = vs{u_i,h_i};
     plot(xx,vv(xx),'DisplayName',txt);
-    legend('Location','southwest')
     hold on;
     u_i = u_i + 1;
 end
+xlabel('t');
+ylabel('v');
+legend('Location','southwest');
 pause
 hold off;
 % Beräkna och plotta fourierutvecklingen av v(t) för de tre U_0
@@ -196,7 +215,9 @@ for u = 1:size(U_0s,2)
         hold on;
     end
     title(['felvärden/noggranhet a_k för U_0 = ', num2str(U_0s(u))]);
-    legend('Location','northeast')
+    legend('Location','northeast');
+    xlabel('h');
+    ylabel('error(diff)');
     pause
     hold off;
 end
@@ -210,11 +231,15 @@ for u = 1:size(U_0s,2)
     
     plot(xx, fourier_funcs{u,1}(xx),xx,fourier_funcs{u,2}(xx),xx, vs{u,h_i}(xx));
     legend({'Fourierutveckling med 3 termer','Fourierutveckling med 10 termer',['v(t) för U_0 = ',num2str(U_0s(u))]},'Location','southwest')
+    xlabel('t');
+    ylabel('v');
     pause
 end
 % Plotta de udda a-värderna för alla U_0
 for u = 1:size(U_0s,2)
     semilogy(abs(squeeze(as(u,h_i,1:2:end)))); 
+    xlabel('k');
+    ylabel('a_k');
     title(['semilogy-plot för udda a_k, U_0 = ',num2str(U_0s(u))])
     pause
 end
