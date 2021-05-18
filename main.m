@@ -10,14 +10,14 @@ pause
 % konstanter
 C = 5e-7;
 L_0 = 0.7;
-hs = [1e-6,5e-7,25e-8,125e-9, 625e-10]*50; 
+hs = [5e-5,2.5e-5,1.25e-5,6.25e-6,3.125e-6]; 
 certainty = 1e-11;
 start = 0; 
 periods = [period,1.5*period, 2*period];
 U_0s = [220,1500, 2300];
 for stop = periods
     %No need to check different hs in this excercise  
-    h = hs(2);
+    h = hs(end);
       for U_0 = U_0s
           results = runge_kutta(U_0, start, h, stop, C, L_0);
           txt = ['I(t) med U_0 = ',num2str(U_0), ' & h = ', num2str(h)];
@@ -114,12 +114,12 @@ for i = 1:size(U_0s,2)
     end
 end   
 pause
-%% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
+%% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 1500 & 2300 best candidate
 
 wanted_period = 400^-1;
 stop = periods(2);
-guess1 = 220;
-guess2 = 1500;
+guess1 = 1500;
+guess2 = 2300;
 
 diff = 100;
 U_stars = zeros(1,size(hs,2));
@@ -174,7 +174,7 @@ hold off;
 pause;
 
 %plotta skillnader i perioder (om det inte finns någon skillnad skippa plotten)
-if any(period_errs)
+if any(period_errs(2:end))
     loglog(hs(2:end),period_errs,'DisplayName', 'T');
     hold on;
     %loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
@@ -185,9 +185,12 @@ if any(period_errs)
     hold off;
     pause;
 else
-    fprintf('nothing to plot! Periods are identical for all found U*s! \n differences are guaranteed below %d \n', certainty);
+    if any(period_errs(1))
+       fprintf('Only non zero difference in period is %d between h = %d & h = %d', period_errs(1),hs(1), hs(2));
+    else
+       fprintf('nothing to plot! Periods are identical for all found U*s! \n differences are guaranteed below %d \n', certainty);
+    end
 end
-
 %plotta skillnader i max(I)
 loglog(hs(2:end),max_errs,'DisplayName', 'max(I)');
 hold on;
@@ -305,6 +308,7 @@ for u = 1:size(U_0s,2)
     title(['semilogy-plot för udda a_k, U_0 = ',num2str(U_0s(u))])
     pause
 end
+hold off;
 
 %% sound-part
     h = 0.00001;
@@ -320,7 +324,6 @@ for u_i = 1:size(U_0s,2)
         y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx,i_period);
     end
     plot(xxs,y);
-    hold off;
     title(['soundplot for U_0 =' num2str(u)]);
     Fs = 400*size(xx,2);
     %sound(y,Fs);
@@ -383,6 +386,9 @@ mystery_fourier{2} = @(t) mys_as(step_i,1)*sin(t) + mys_as(step_i,2)*sin(2*t) + 
 plot(xx, v,xx, mystery_fourier{1}(xx),xx,mystery_fourier{2}(xx));
 legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 10 termer'},'Location','southwest')
 pause
+
+plot(xx, v);
+legend('mysterysound','Location','southwest');
 hold on;
 
 % Bestäm U_0 för mysterysound
@@ -402,11 +408,20 @@ for h = used_hs
     plot(xx,ppval(cx,xx*period/(2*pi))/y_max,'DisplayName',['mystery sound approximation plot med U_0 = ', num2str(U_0_mys(i)), ' h = ',num2str(h)]);
     i = i+1;
 end
+pause;
 
 for i = 2:size(used_hs,2)
    diff_U_mys(i-1) = abs(U_0_mys(i)-U_0_mys(i-1));
    fprintf(['\n diff in U for mystery sound: ', num2str(diff_U_mys(i-1)), ' for h =', num2str(used_hs(i))]);
 end
+hold off;
+loglog(used_hs(2:end),diff_U_mys,'DisplayName', 'U_h - U_{2h}');
+hold on;
+title('Errors in U for mystery sound');
+loglog(used_hs(2:end),used_hs(2:end).^2,'DisplayName', 'O(h^2)');
+legend('Location','northwest');
+xlabel('h');
+ylabel('{U}_{ h} - {U}_{ 2h}');
 hold off;
 %% Function declaration for U_0 mysterysound
 function kvot = interpol_eval(U_0,start, h,stop,certainty, C, L_0,steps,coefs)
