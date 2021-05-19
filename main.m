@@ -463,6 +463,8 @@ pause
 %% Bestäm U_0 för mysterysound
 
 %Plotta mysterysound för att jämföra med
+h = 2*pi/400;
+xx = [0:h:2*pi];
 plot(xx, v);
 legend('mysterysound','Location','southwest');
 hold on;
