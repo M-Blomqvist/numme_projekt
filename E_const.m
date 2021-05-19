@@ -10,8 +10,6 @@ function Es = E_const(U_0,start,h, stop, C, L_0)
     %funktionen med bara I/I' (U = L* I'), v = [I,I']
     E = @(v) (C/2)*((I_0_2*L_0)/(I_0_2+v(1)^2))^2*v(2)^2 + (1/2)*L_0*I_0_2*log(I_0_2+v(1)^2);
 
-    fprintf('Calulating E for h: %d \n',h);
-
     %Få I & I' värden
     results = runge_kutta(U_0,start,h,stop, C, L_0);
     %Initialisera

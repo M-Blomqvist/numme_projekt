@@ -15,6 +15,7 @@ certainty = 1e-11;
 start = 0; 
 periods = [period,1.5*period, 2*period];
 U_0s = [220,1500, 2300];
+
 for stop = periods
     %No need to check different hs in this excercise  
     h = hs(end);
@@ -36,6 +37,8 @@ end
 for stop = periods
     for h = hs
         for U_0 = U_0s
+            %Hjälp funktion som använder runge kutta och använder
+            %resultaten för att räkna ut E
               Es = E_const(U_0, start, h, stop, C, L_0);
               txt = ['E(t) med U_0 = ',num2str(U_0)];
               plot([start:h:stop], Es,'DisplayName',txt);
@@ -53,9 +56,12 @@ end
 
 fprintf('Sekant certainty (break when diff less than) %d \n', certainty);
 for stop = periods(2)
+    %Använd hjälpfunktions fil som ger perioder, Imax, deras fel samt alla
+    %använda genom spline interpolerade funktioner (cx)
    [e_hs, inter_period, period_errs,inter_max,  max_errs,cxs] = interpol_errors(U_0s, start, hs, stop,certainty, C, L_0);
    for u_i = 1:size(U_0s,2)
-       %plotta endast de med minsta h
+       
+       %plotta resultaten endast det med minsta h värdet
        i_period = inter_period(u_i,end);
        xx = [start:hs(end):stop];
        cx = cxs{u_i,end}; 
@@ -74,7 +80,8 @@ for stop = periods(2)
    pause;
    hold off;
 end
-%plot errors in period
+
+%plotta errors i period
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
@@ -90,7 +97,7 @@ legend('Location','northwest');
 hold off;
 pause
 
-%plot errors in max I
+%plota errors i Imax
 u_i = 1;
 for U_0 = U_0s
     txt = ['U_0 = ',num2str(U_0)];
@@ -107,11 +114,12 @@ xlabel('h');
 ylabel('{max(I)}_h - {max(I)}_{2h}');
 legend('Location','southeast');
 hold off;
+
+%printa alla T och Imax värden för de olika U_0 värderna, samt noggranheten
+%för den mest noggranna.
 for i = 1:size(U_0s,2)
-
-        U_0 = U_0s(i);
-        fprintf(['For U_0 = ',num2str(U_0),sprintf('\nT = %1.16d', inter_period(i,:)), ' err = ', num2str(period_errs(i,end)), sprintf('\nImax = %1.16d', inter_max(i,:,2)), ' err = ', num2str(max_errs(i,end)),' \n']);
-
+    U_0 = U_0s(i);
+    fprintf(['For U_0 = ',num2str(U_0),sprintf('\nT = %1.16d', inter_period(i,:)), ' err = ', num2str(period_errs(i,end)), sprintf('\nImax = %1.16d', inter_max(i,:,2)), ' err = ', num2str(max_errs(i,end)),' \n']);
 end   
 pause
 %% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 1500 & 2300 best candidate
@@ -120,26 +128,34 @@ stop = periods(2);
 guess1 = 1500;
 guess2 = 2300;
 diff = 100;
+
+%Förallokera
 U_stars = zeros(1,size(hs,2));
 star_periods = zeros(1,size(U_stars,2));
 star_maxs = zeros(2,size(U_stars,2));
-%Find U* for different hs;
+
+%Hitta U* för olika h värden;
 for i = [1:size(hs,2)]
     h = hs(i);
+    %Använder Rungekutta och interpolation tillsammans med sekant-metoden
+    %för att hitta ett U_0* som ger perioden 1/400.
     [U_star,cx,x_max,y_max,period] = find_period(wanted_period,guess1,guess2,start,h,stop,certainty,C,L_0);
     U_stars(i) = U_star;
     star_periods(i) = period;
     star_maxs(:,i) = [x_max;y_max];
     star_plots{i} = cx;
 end 
-%use most accurrate h to plot
+%plotta med det mest exakta h värdet
 h = hs(end);
+
+%Plotta kurvan för alla U_0* värden 
 i = 1;
 for u = U_stars
     txt = ['I(t),U*= ',num2str(u),' h = ', num2str(hs(i))];
     x = [start:h:stop];
     plot(x, ppval(star_plots{i},x),'DisplayName',txt);
     hold on;
+    %Markera även ut maxvärden och perioder 
     plot(star_maxs(1,i),star_maxs(2,i), 'o', 'DisplayName',['max värde för ovan ', num2str(star_maxs(2,i))]);
     plot([start:star_periods(i):stop],ppval(star_plots{i},[start:star_periods(i):stop]), '*', 'DisplayName',['period för ovan ',num2str(star_periods(i) )]);
     i = i +1;
@@ -151,7 +167,7 @@ ylabel('I');
 hold off;
 pause;
 
-%calculate differences (resulting errors = inaccuracy)
+%Använd differensen mellan h & h/2 för att uppskatta noggranhet 
 period_errs = zeros(1,size(U_stars,2)-1);
 max_errs = zeros(1,size(U_stars,2)-1);
 ustar_errs = zeros(1,size(U_stars,2)-1);
@@ -160,6 +176,7 @@ for u_i = 2:size(U_stars,2)
    period_errs(u_i-1) = abs(star_periods(u_i) - star_periods(u_i-1));
    ustar_errs(u_i-1) = abs(U_stars(u_i)-U_stars(u_i-1)); 
 end
+
 %plotta skillnader i U*
 loglog(hs(2:end),ustar_errs,'DisplayName', 'U*');
 hold on;
@@ -198,6 +215,9 @@ xlabel('h');
 ylabel('{max(I)}_h-{max(I)}_{2h}');
 legend('Location','northwest');
 hold off;
+
+%Printa även U_0*, T, och Imax värden samt den numeriska säkerheten för den
+%noggrannaste av dem
 fprintf('\n certainty = %d \n', certainty);
 fprintf([sprintf('\nU* = %1.16d', U_stars),' err = ', num2str(ustar_errs(end)), sprintf('\nT = %1.16d', star_periods), ' err = ', num2str(period_errs(end)), sprintf('\nImax = %1.16d', star_maxs(2,:)), ' err = ', num2str(max_errs(end)),' \n']);
 pause;
@@ -223,8 +243,6 @@ I_maxs_stars_diffs = zeros(1,4);
 for c_i = 1:4
     C_ = consts(1,c_i);
     L_ = consts(2,c_i);
-    
-    fprintf('Finding U* with c = %d & L_0 = %d \n', C_,L_);
     
     % beräkna U_0* och I_max* med störda konstanter
     [U_star,~,~,y_max,~] = find_period(wanted_period,guess1,guess2,start,hs(h_i),stop,certainty,C_,L_);
@@ -290,6 +308,7 @@ for u = 1:size(U_0s,2)
     end
 end
 
+%Räkna ut noggranhetten på ak genom att jämföra olika h
 for u = 1:size(U_0s,2)
     for h_i = 2:size(hs,2)
         for k = 1:coefs
@@ -297,6 +316,8 @@ for u = 1:size(U_0s,2)
         end 
     end
     fprintf('\n Noggranhet ak för U_0 = %d bästa h = %d', U_0s(u), hs(end));
+    
+    %plotta noggranheten i en loglog plot
     for k = 1:coefs
         fprintf('\n a%d = %d +- %d',k,as(u,end,k), diff_a(end,k));
         loglog(hs(2:end), diff_a(:,k),'DisplayName',['diff: a', num2str(k)]);
@@ -311,7 +332,7 @@ for u = 1:size(U_0s,2)
     hold off;
 end
 
-%choose h to continue with 3
+%välj mest noggranna h att fortsätta med
 h_i = size(hs,2);
 for u = 1:size(U_0s,2)
     % definera fourierutvecklingarna med beräknade koefficienter
@@ -439,11 +460,12 @@ plot(xx, v,xx, mystery_fourier{1}(xx),xx,mystery_fourier{2}(xx));
 legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 10 termer'},'Location','southwest')
 pause
 
+%% Bestäm U_0 för mysterysound
+
+%Plotta mysterysound för att jämföra med
 plot(xx, v);
 legend('mysterysound','Location','southwest');
 hold on;
-
-%% Bestäm U_0 för mysterysound
 
 % använd sekantmetoden för att hitta det U_0 som ger samma fourierkvoter
 % som mysterysound 
@@ -464,29 +486,31 @@ for h = hs
     [cx,~,y_max,period] = interpol(U_0_mys(i),start,h,stop,certainty,C,L_0);
     xx = [0:h*2*pi/period:2*pi];
     plot(xx,ppval(cx,xx*period/(2*pi))/y_max,'DisplayName',['mystery sound approximation plot med U_0 = ', num2str(U_0_mys(i)), ' h = ',num2str(h)]);
+    hold on;
     i = i+1;
 end
 pause;
-
+hold off;
 % beräkna differensen i svar mellan olika steglängder
 for i = 2:size(hs,2)
    diff_U_mys(i-1) = abs(U_0_mys(i)-U_0_mys(i-1));
    fprintf(['\n diff in U for mystery sound: ', num2str(diff_U_mys(i-1)), ' for h =', num2str(hs(i))]);
 end
-loglog(used_hs(2:end),diff_U_mys,'DisplayName', 'U_h - U_{2h}');
+loglog(hs(2:end),diff_U_mys,'DisplayName', 'U_h - U_{2h}');
 hold on;
 title('Errors in U for mystery sound');
-loglog(used_hs(2:end),used_hs(2:end).^2,'DisplayName', 'O(h^2)');
+loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
 legend('Location','northwest');
 xlabel('h');
 ylabel('{U}_{ h} - {U}_{ 2h}');
 hold off;
+pause;
 %% Hjälpfunktion för att beräkna U_0 för mysterysound
 
 % Beräknar kvoten a3/a1 för fourierutvecklingen av den omskalade funktionen 
 % v för U_0
 function kvot = fourier_kvot(U_0,start, h,stop,certainty, C, L_0,coefs)
-    fprintf('Guess: %d\n', U_0);
+    %fprintf('Guess: %d\n', U_0);
     [cx,~,y_max,period] = interpol(U_0,start,h,stop,certainty, C, L_0);
     v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
     xx = [0:h*2*pi/period:2*pi];
