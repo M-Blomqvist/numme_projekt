@@ -58,7 +58,7 @@ for stop = periods(2)
        %plotta endast de med minsta h
        i_period = inter_period(u_i,end);
        xx = [start:hs(end):stop];
-       cx = cxs{u_i,end};
+       cx = cxs{u_i,end}; 
        x_max = inter_max(u_i,end,1);
        y_max = inter_max(u_i,end,2);
        txt = ['I(t) interpolerad U_0 = ',num2str(U_0s(u_i)), ' h = ', num2str(hs(end))];
@@ -108,18 +108,18 @@ ylabel('{max(I)}_h - {max(I)}_{2h}');
 legend('Location','southeast');
 hold off;
 for i = 1:size(U_0s,2)
-    for h_i = 1:size(hs,2) 
+
         U_0 = U_0s(i);
-        fprintf(['For U_0 = ',num2str(U_0),'\n T = ', num2str(inter_period(i,end)), ' err = ', num2str(period_errs(i,end)),'\n max(I) = ',num2str(inter_max(i,end)), ' err = ', num2str(max_errs(i,end)),' \n']);
-    end
+        fprintf(['For U_0 = ',num2str(U_0),sprintf('\nT = %1.16d', inter_period(i,:)), ' err = ', num2str(period_errs(i,end)), sprintf('\nImax = %1.16d', inter_max(i,:,2)), ' err = ', num2str(max_errs(i,end)),' \n']);
+
 end   
 pause
-%% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 220 & 1500 best candidate
+%% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 1500 & 2300 best candidate
 
 wanted_period = 400^-1;
 stop = periods(2);
-guess1 = 220;
-guess2 = 1500;
+guess1 = 1500;
+guess2 = 2300;
 
 diff = 100;
 U_stars = zeros(1,size(hs,2));
@@ -177,7 +177,7 @@ pause;
 if any(period_errs)
     loglog(hs(2:end),period_errs,'DisplayName', 'T');
     hold on;
-    %loglog(hs(2:end),hs(2:end).^2,'DisplayName', 'O(h^2)');
+
     title('Felvärden: Perioder');
     xlabel('h');
     ylabel('{T}_h-{T}_{2h}');
@@ -200,45 +200,66 @@ hold off;
 pause;
 
 %% störningsanalys
+% De säkra värdena på U_0_star och I_max_star
+U_star_cert =  2.068995e+3;
+I_star_cert =  4.50310;
+
+% Konstanter
 Ls = [L_0*0.95,L_0*1.05];
 Cs = [C*0.95,C*1.05];
 consts = [Cs(1), Cs(2), Cs(1), Cs(2);
           Ls(1), Ls(1), Ls(2), Ls(2)];     
-U_0_stars = zeros(1,4);
-I_maxs = zeros(1,4);
 
-%Use most correct h;
-h = hs(end);
-% for every const combiniation
+%För att göra en tillfölitlighetsbedömning så ändra detta till 4
+h_i = 5;
+
+% skillnaden mellan det riktiga värdet och det störda värdet
+U_0_stars_diffs = zeros(1,4);
+I_maxs_stars_diffs = zeros(1,4);
+
+% för varje kombination av konstanter
 for c_i = 1:4
     C_ = consts(1,c_i);
     L_ = consts(2,c_i);
+    
     fprintf('Finding U* with c = %d & L_0 = %d \n', C_,L_);
-    [U_star,~,~,y_max,~] = find_period(wanted_period,guess1,guess2,start,h,stop,certainty,C_,L_);
-    U_0_stars(c_i) = U_star;
-    I_maxs(c_i) = y_max;
+    
+    % beräkna U_0* och I_max* med störda konstanter
+    [U_star,~,~,y_max,~] = find_period(wanted_period,guess1,guess2,start,hs(h_i),stop,certainty,C_,L_);
+    
+    % beräkna diffen
+    U_0_stars_diffs(c_i) = abs(U_star-U_star_cert);
+    I_maxs_stars_diffs(c_i) = abs(y_max - I_star_cert);
 end
 
-% calc diffs
-U_0_diff = abs(max(U_0_stars) - min(U_0_stars)) ;
-I_max_diff = abs(max(I_maxs) - min(I_maxs));
+% ta högsta diffen
+U_0_diff = max(U_0_stars_diffs) ;
+I_max_diff = max(I_maxs_stars_diffs);
 
 % beräkna procentsats av riktiga
-h_i = 3; % välj vilket h-värde 
-U_0_proc = U_0_diff*100/U_stars(h_i);
-I_max_proc = I_max_diff*100/I_maxs(h_i);
+%h_i = 3; % välj vilket h-värde 
+U_0_proc = U_0_diff*100/U_star_cert;
+I_max_proc = I_max_diff*100/I_star_cert;
 
 fprintf('En störning i L_0 och C på 5%% ger ett fel på \n U_0*: %d%% I_max*: %d%% \n',U_0_proc,I_max_proc); 
 %% Utvidgning: v(t)
-u_i = 1;
+
 
 % Plotta den omformade v(t) för de tre U_0
+
+% Vi interpolerar återigen Runge-Kutta 4 lösningen med startvärde U_0, för
+% att beräkna den omskalade funktionen
+u_i = 1;
 for u = U_0s
     for h_i = 1:size(hs,2)
         h = hs(h_i);
         [cx,~,y_max,period] = interpol(u,start,h,stop,certainty, C, L_0);
+        
+        % lagra alla v-funktioner
         vs{u_i,h_i} = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
     end
+    
+    % plotta v-funktionen
     xx = [0:h*2*pi/period:2*pi];
     txt = ['V(t) med U_0 = ', num2str(u)];
     vv = vs{u_i,h_i};
@@ -251,6 +272,7 @@ ylabel('v');
 legend('Location','southwest');
 pause
 hold off;
+
 % Beräkna och plotta fourierutvecklingen av v(t) för de tre U_0
 coefs =10; 
 for u = 1:size(U_0s,2)
@@ -297,6 +319,7 @@ for u = 1:size(U_0s,2)
     ylabel('v');
     pause
 end
+%% Semilogy plot
 % Plotta de udda a-värderna för alla U_0
 for u = 1:size(U_0s,2)
     semilogy(abs(squeeze(as(u,h_i,1:2:end)))); 
@@ -307,28 +330,40 @@ for u = 1:size(U_0s,2)
 end
 
 %% sound-part
-    h = 0.00001;
+
+% Här valde vi bara ett h för att skapa ljuden
+h = hs(3);
+
+% För varje U_0
 for u_i = 1:size(U_0s,2)
     u = U_0s(u_i);
+    
+    % Interpolera funktionen och beräkna v 
     [cx,~,y_max,i_period] = interpol(u,start,h,stop,certainty, C, L_0);
     v = @(xs,p) ppval(cx,xs*p/(2*pi))/y_max;
     xx = [0:h*2*pi/i_period:2*pi];
     y = zeros(1,size(xx,2)*400);
     xxs = zeros(1,size(xx,2)*400);
+    
+    % skapa ljudet genom att utvärdera v i alla punkter, 400 gånger
     for i = 0:1:399
         xxs(i*size(xx,2)+1:(i+1)*size(xx,2)) = xx+(i*2*pi);
         y(i*size(xx,2)+1:(i+1)*size(xx,2)) = v(xx,i_period);
     end
+    
+    % plotta ljudet
     plot(xxs,y);
     hold off;
     title(['soundplot for U_0 =' num2str(u)]);
     Fs = 400*size(xx,2);
+    % vvv   detta låter hemskt, så vi valde att bara lyssna på ljudfilen
     %sound(y,Fs);
     audiowrite(['audio_',num2str(u),'.ogg'],y,Fs);
     pause;
 end
 
 %% Mystery sound part
+% Generera och plotta mystery sound
 load('mysterysound1');
 load('mysterysoundlong');
 plot(v);
@@ -338,30 +373,42 @@ plot(y);
 title('mysterysound 400')
 audiowrite('mysterylong.wav',y,400*size(v,2));
 pause;
+
+% Beräkna fourierutvecklingen av mysterysound
 period = 400;
 step_overs = [1,0];
 
 a = @(k,h,step_over) v(1:(step_over+1):end).*sin(k.*[0:h:2*pi]);
 
+% koefficienterna beräknas för hälften av funktionsvärdena och sedan för
+% alla funktionsvärden för att ha två h-värden
 for step_i = 1:size(step_overs,2)
+    % beräkna steglängden
     step_over = step_overs(step_i);
     h = (step_over+1)*2*pi/period;
     mys_hs(step_i) = h;
     xx = [0:h:2*pi];
+    
+    % beräkna koefficienterna med trapetsregeln
     coefs = 10;
     for k = 1:coefs
-        mys_as(step_i,k) = (1/pi)*trapz([0:h:2*pi], a(k,h,step_over)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
+        mys_as(step_i,k) = (1/pi)*trapz([0:h:2*pi], a(k,h,step_over)); 
     end
+    
+    % beräkna kvoten
     mys_kvot(step_i) = mys_as(step_i,3)/mys_as(step_i,1);
     fprintf('\n kvot a3/a1 = %d h = %d \n', mys_kvot(step_i),h);
 end
 
+% Beräkna diffen mellan de beräknade kvoterna för att estimera
+% tillförlitlighet
 for step_i = 2:size(step_overs,2)
     diff_kvot(step_i-1) = abs(mys_kvot(step_i) - mys_kvot(step_i-1));
 end
 fprintf('\n Diff a3/a1 = %d \n', diff_kvot(:));
 pause
 
+% Printa koefficienterna för alla U_0 och mysterysound
 h_i = size(hs,2);
 for u_i = 1:size(U_0s,2)
    kvot(u_i) = as(u_i,h_i,3)/as(u_i,h_i,1);
@@ -376,40 +423,52 @@ fprintf('\n a3/a1 = %d for mystery sound', kvot(end));
 
 %ta den mest accurate steglängden (alla punkter)
 step_i = size(step_overs,2);
+
 % definera fourierutvecklingarna med beräknade koefficienter
 mystery_fourier{1} = @(t) mys_as(step_i,1)*sin(t) + mys_as(step_i,2)*sin(2*t) + mys_as(step_i,3)*sin(3*t);
 mystery_fourier{2} = @(t) mys_as(step_i,1)*sin(t) + mys_as(step_i,2)*sin(2*t) + mys_as(step_i,3)*sin(3*t) + mys_as(step_i,4)*sin(4*t) + mys_as(step_i,5)*sin(5*t) + mys_as(step_i,6)*sin(6*t) + mys_as(step_i,7)*sin(7*t) + mys_as(step_i,8)*sin(8*t) + mys_as(step_i,9)*sin(9*t) + mys_as(step_i,10)*sin(10*t);
 
+% plotta fourierutvecklingarna
 plot(xx, v,xx, mystery_fourier{1}(xx),xx,mystery_fourier{2}(xx));
 legend({'mysterysound','Fourierutveckling med 3 termer','Fourierutveckling med 10 termer'},'Location','southwest')
 pause
 hold on;
 
-% Bestäm U_0 för mysterysound
-%h = hs(3);
-used_hs= hs;
+%% Bestäm U_0 för mysterysound
 
+% använd sekantmetoden för att hitta det U_0 som ger samma fourierkvoter
+% som mysterysound 
 i = 1;
-for h = used_hs
+for h = hs
+    % startgissningar
     U_0_2 = 1500;
     U_0_1 = 2300;
     coefs = 10;
-    % definiera funktionen med interpolation
-    error = @(U_0) kvot(end)-interpol_eval(U_0, 0, h, stop, certainty, C, L_0, size(v,2)-1,coefs);
+    
+    % definiera funktionen som ska lösas errors(U_0) = 0
+    error = @(U_0) kvot(end)-fourier_kvot(U_0, 0, h, stop, certainty, C, L_0,coefs);
+    
+    % lös med sekant
     U_0_mys(i) = sekant(error, U_0_1, U_0_2, certainty);
+    
+    % interpolera för att plotta lösningen
     [cx,~,y_max,period] = interpol(U_0_mys(i),start,h,stop,certainty,C,L_0);
     xx = [0:h*2*pi/period:2*pi];
     plot(xx,ppval(cx,xx*period/(2*pi))/y_max,'DisplayName',['mystery sound approximation plot med U_0 = ', num2str(U_0_mys(i)), ' h = ',num2str(h)]);
     i = i+1;
 end
 
-for i = 2:size(used_hs,2)
+% beräkna differensen i svar mellan olika steglängder
+for i = 2:size(hs,2)
    diff_U_mys(i-1) = abs(U_0_mys(i)-U_0_mys(i-1));
-   fprintf(['\n diff in U for mystery sound: ', num2str(diff_U_mys(i-1)), ' for h =', num2str(used_hs(i))]);
+   fprintf(['\n diff in U for mystery sound: ', num2str(diff_U_mys(i-1)), ' for h =', num2str(hs(i))]);
 end
 hold off;
-%% Function declaration for U_0 mysterysound
-function kvot = interpol_eval(U_0,start, h,stop,certainty, C, L_0,steps,coefs)
+%% Hjälpfunktion för att beräkna U_0 för mysterysound
+
+% Beräknar kvoten a3/a1 för fourierutvecklingen av den omskalade funktionen 
+% v för U_0
+function kvot = fourier_kvot(U_0,start, h,stop,certainty, C, L_0,coefs)
     fprintf('Guess: %d\n', U_0);
     [cx,~,y_max,period] = interpol(U_0,start,h,stop,certainty, C, L_0);
     v = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
