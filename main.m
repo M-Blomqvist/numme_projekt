@@ -115,12 +115,10 @@ for i = 1:size(U_0s,2)
 end   
 pause
 %% Hitta U_0* så att 1/period = 400 = 0.0025, U_0 = 1500 & 2300 best candidate
-
 wanted_period = 400^-1;
 stop = periods(2);
 guess1 = 1500;
 guess2 = 2300;
-
 diff = 100;
 U_stars = zeros(1,size(hs,2));
 star_periods = zeros(1,size(U_stars,2));
@@ -133,8 +131,7 @@ for i = [1:size(hs,2)]
     star_periods(i) = period;
     star_maxs(:,i) = [x_max;y_max];
     star_plots{i} = cx;
-end
-
+end 
 %use most accurrate h to plot
 h = hs(end);
 i = 1;
@@ -152,6 +149,7 @@ legend('Location','southeast');
 xlabel('t');
 ylabel('I');
 hold off;
+pause;
 
 %calculate differences (resulting errors = inaccuracy)
 period_errs = zeros(1,size(U_stars,2)-1);
@@ -186,7 +184,7 @@ if any(period_errs(2:end))
     pause;
 else
     if any(period_errs(1))
-       fprintf('Only non zero difference in period is %d between h = %d & h = %d', period_errs(1),hs(1), hs(2));
+       fprintf('Only non zero difference in period is %d between h = %d & h = %d \n', period_errs(1),hs(1), hs(2));
     else
        fprintf('nothing to plot! Periods are identical for all found U*s! \n differences are guaranteed below %d \n', certainty);
     end
@@ -200,8 +198,9 @@ xlabel('h');
 ylabel('{max(I)}_h-{max(I)}_{2h}');
 legend('Location','northwest');
 hold off;
+fprintf('\n certainty = %d \n', certainty);
+fprintf([sprintf('\nU* = %1.16d', U_stars),' err = ', num2str(ustar_errs(end)), sprintf('\nT = %1.16d', star_periods), ' err = ', num2str(period_errs(end)), sprintf('\nImax = %1.16d', star_maxs(2,:)), ' err = ', num2str(max_errs(end)),' \n']);
 pause;
-
 %% störningsanalys
 Ls = [L_0*0.95,L_0*1.05];
 Cs = [C*0.95,C*1.05];
@@ -235,11 +234,13 @@ fprintf('En störning i L_0 och C på 5%% ger ett fel på \n U_0*: %d%% I_max*: 
 %% Utvidgning: v(t)
 u_i = 1;
 
+v_periods = zeros(size(U_0s,2), size(hs,2));
 % Plotta den omformade v(t) för de tre U_0
 for u = U_0s
     for h_i = 1:size(hs,2)
         h = hs(h_i);
         [cx,~,y_max,period] = interpol(u,start,h,stop,certainty, C, L_0);
+        v_period(u_i,h_i) = period;
         vs{u_i,h_i} = @(xs) ppval(cx,xs*period/(2*pi))/y_max;
     end
     xx = [0:h*2*pi/period:2*pi];
@@ -261,7 +262,7 @@ for u = 1:size(U_0s,2)
         v = vs{u,h_i};
         h = hs(h_i);
         a = @(k,xs) v(xs).*sin(k.*xs);
-        xx = [0:h*2*pi/period:2*pi];
+        xx = [0:h*2*pi/v_period(u,h_i):2*pi];
         for k = 1:coefs
             as(u,h_i,k) = (1/pi)*trapz(xx, a(k,xx)); 
         end
@@ -272,9 +273,11 @@ for u = 1:size(U_0s,2)
     for h_i = 2:size(hs,2)
         for k = 1:coefs
             diff_a(h_i-1,k) = abs(as(u,h_i,k) - as(u,h_i-1,k));
-        end
+        end 
     end
+    fprintf('\n Noggranhet ak för U_0 = %d bästa h = %d', U_0s(u), hs(end));
     for k = 1:coefs
+        fprintf('\n a%d = %d +- %d',k,as(u,end,k), diff_a(end,k));
         loglog(hs(2:end), diff_a(:,k),'DisplayName',['diff: a', num2str(k)]);
         hold on;
     end
@@ -302,14 +305,15 @@ for u = 1:size(U_0s,2)
 end
 % Plotta de udda a-värderna för alla U_0
 for u = 1:size(U_0s,2)
-    semilogy(abs(squeeze(as(u,h_i,1:2:end)))); 
+    semilogy(abs(squeeze(as(u,end,1:2:end))), 'DisplayName',['U_0 = ', num2str(U_0s(u))]);
+    hold on;
+    ylabel('|ak|');
     xlabel('k');
-    ylabel('a_k');
-    title(['semilogy-plot för udda a_k, U_0 = ',num2str(U_0s(u))])
-    pause
+    legend('Location', 'southwest');
+    title('semilogy-plot för udda a_k');
 end
 hold off;
-
+pause;
 %% sound-part
     h = 0.00001;
 for u_i = 1:size(U_0s,2)
@@ -353,7 +357,7 @@ for step_i = 1:size(step_overs,2)
     xx = [0:h:2*pi];
     coefs = 10;
     for k = 1:coefs
-        mys_as(step_i,k) = (1/pi)*trapz([0:h:2*pi], a(k,h,step_over)); % TODO: beräkna för h/2 och jämför för att visa 4 siffrors nogrannhet
+        mys_as(step_i,k) = (1/pi)*trapz([0:h:2*pi], a(k,h,step_over));
     end
     mys_kvot(step_i) = mys_as(step_i,3)/mys_as(step_i,1);
     fprintf('\n kvot a3/a1 = %d h = %d \n', mys_kvot(step_i),h);
@@ -402,7 +406,7 @@ for h = used_hs
     coefs = 10;
     % definiera funktionen med interpolation
     error = @(U_0) kvot(end)-interpol_eval(U_0, 0, h, stop, certainty, C, L_0, size(v,2)-1,coefs);
-    U_0_mys(i) = sekant(error, U_0_1, U_0_2, certainty);
+    U_0_mys(i) = sekant(error, U_0_1,_ U_0_2, certainty);
     [cx,~,y_max,period] = interpol(U_0_mys(i),start,h,stop,certainty,C,L_0);
     xx = [0:h*2*pi/period:2*pi];
     plot(xx,ppval(cx,xx*period/(2*pi))/y_max,'DisplayName',['mystery sound approximation plot med U_0 = ', num2str(U_0_mys(i)), ' h = ',num2str(h)]);
